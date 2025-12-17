@@ -1,22 +1,56 @@
 from __future__ import annotations
 
-"""Main FastAPI entry‑point – Black‑Litterman + ML Robo‑Advisor (robust).
 
-🔄 2025‑05‑20
-    • volatility filter per risk_mode (previous commit)
-    • robust optimiser – graceful fallback when CVXPY reports infeasible:
-        1. Sharpe max → MinRisk → Equal‑weight fallback
-        2. Automatically relax sector caps / soft cap isn’t needed here – equal weight always feasible
-"""
 
 import hashlib
 import os, json, time
+
+
+LOGO_DEV_TOKEN = 'pk_A-fQ9-bVR2m4Fk06RMJnfw'
+
 from typing import Dict, List, Tuple
 import re
 import requests
 import numpy as np
 import pandas as pd
 import yfinance as yf
+from urllib.parse import urlparse
+
+# --- Logo helper (Logo.dev) ---
+# We only fetch company website for a small set of tickers (holdings) and cache it.
+_LOGO_CACHE: Dict[str, Tuple[float, str | None]] = {}
+_LOGO_TTL = int(os.getenv("LOGO_TTL", "86400"))  # seconds (default: 1 day)
+
+def _domain_from_url(u: str) -> str | None:
+    if not u:
+        return None
+    try:
+        p = urlparse(u if "://" in u else "https://" + u)
+        dom = (p.netloc or "").lower()
+        if dom.startswith("www."):
+            dom = dom[4:]
+        return dom or None
+    except Exception:
+        return None
+
+def _logo_for_ticker(ticker: str) -> str | None:
+    """Return a logo URL for a ticker symbol.
+
+    Uses Logo.dev stock ticker logo endpoint when LOGO_DEV_TOKEN is set.
+    """
+    k = (ticker or "").upper().strip()
+    if not k or not LOGO_DEV_TOKEN:
+        return None
+
+    now = time.time()
+    cached = _LOGO_CACHE.get(k)
+    if cached and (now - cached[0]) < _LOGO_TTL:
+        return cached[1]
+
+    logo = f"https://img.logo.dev/ticker/{k.lower()}?token={LOGO_DEV_TOKEN}&size=64"
+    _LOGO_CACHE[k] = (now, logo)
+    return logo
+
 from fastapi import FastAPI, Query, Request, HTTPException
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -433,12 +467,7 @@ def portfolio(
 
         cname = meta.get("shortName") or meta.get("longName") or t
         exch  = (meta.get("fullExchangeName") or meta.get("exchange") or "-")
-        logo  = meta.get("logo_url")
-        if not logo:
-            dom = _domain_from_url(meta.get("website"))
-            if dom:
-                logo = f"https://logo.clearbit.com/{dom}?size=64"
-
+        logo  = _logo_for_ticker(t) or meta.get("logo_url")
         table.append({
             "ticker": t,
             "company": cname,
