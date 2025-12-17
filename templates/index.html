@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Portfolio Recommendation - Robo Advisor</title>
+    <title>Portfolio Recommendation</title>
     <style>
       /* Glass morphism cards */
       .glass-card {
@@ -1462,7 +1462,106 @@
       }
 
       // Get Portfolio
-      async function getPortfolio() {
+      
+      const USE_MOCK_PORTFOLIO = true;
+      const MOCK_DELAY_MS = 900;
+
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      function makeMockPortfolio(cap) {
+        const holdings = [
+          { ticker: "AAPL", company: "Apple Inc.", exchange: "NasdaqGS", weight: 22.5, last_close: 190.12, pct_change: 0.84, logo: null },
+          { ticker: "MSFT", company: "Microsoft Corporation", exchange: "NasdaqGS", weight: 18.0, last_close: 414.55, pct_change: -0.31, logo: null },
+          { ticker: "NVDA", company: "NVIDIA Corporation", exchange: "NasdaqGS", weight: 15.0, last_close: 171.28, pct_change: 1.76, logo: null },
+          { ticker: "JNJ", company: "Johnson & Johnson", exchange: "NYSE", weight: 12.5, last_close: 158.04, pct_change: 0.12, logo: null },
+          { ticker: "XOM", company: "Exxon Mobil Corporation", exchange: "NYSE", weight: 10.0, last_close: 116.73, pct_change: -0.66, logo: null },
+          { ticker: "JPM", company: "JPMorgan Chase & Co.", exchange: "NYSE", weight: 9.0, last_close: 216.10, pct_change: 0.23, logo: null },
+          { ticker: "PG", company: "Procter & Gamble Co.", exchange: "NYSE", weight: 7.0, last_close: 166.48, pct_change: -0.09, logo: null },
+          { ticker: "KO", company: "Coca-Cola Company", exchange: "NYSE", weight: 6.0, last_close: 62.19, pct_change: 0.41, logo: null }
+        ];
+
+        const n = 60;
+        const end = new Date();
+        const start = new Date(end);
+        start.setDate(start.getDate() - (n - 1));
+
+        const dates = [];
+        const aum_port = [];
+        const aum_sp500 = [];
+        const ret_port = [];
+        const ret_sp500 = [];
+
+        for (let i = 0; i < n; i++) {
+          const d = new Date(start);
+          d.setDate(start.getDate() + i);
+          dates.push(d.toISOString().slice(0, 10));
+
+          const p = cap * (1 + 0.0011 * i + 0.012 * Math.sin(i / 4) + 0.004 * Math.cos(i / 11));
+          const s = cap * (1 + 0.0009 * i + 0.010 * Math.sin(i / 5) + 0.003 * Math.cos(i / 13));
+
+          const pv = Math.round(p * 100) / 100;
+          const sv = Math.round(s * 100) / 100;
+
+          aum_port.push(pv);
+          aum_sp500.push(sv);
+
+          ret_port.push(Math.round(((pv / cap) - 1) * 10000) / 100);
+          ret_sp500.push(Math.round(((sv / cap) - 1) * 10000) / 100);
+        }
+
+        const indiv_dates = dates.slice(-30);
+        const indiv = {};
+        const tics = holdings.slice(0, 5).map((h) => h.ticker);
+
+        tics.forEach((tic, k) => {
+          const arr = [];
+          for (let i = 0; i < indiv_dates.length; i++) {
+            const v = (1.2 * Math.sin((i + 3 * k) / 4) + 0.7 * Math.cos((i + 2 * k) / 9) + 0.15 * i);
+            arr.push(Math.round(v * 100) / 100);
+          }
+          indiv[tic] = arr;
+        });
+
+        const ending = aum_port[aum_port.length - 1];
+        const sp500_ending = aum_sp500[aum_sp500.length - 1];
+
+        const summary = {
+          initial: cap,
+          ending,
+          sp500_initial: cap,
+          sp500_ending,
+          alpha_pct: Math.round((((ending / cap) - (sp500_ending / cap)) * 100) * 100) / 100,
+          drawdown_pct: -2.96
+        };
+
+        const weights_hc = {
+          chart: { type: "bar" },
+          title: { text: "Portfolio Weights" },
+          xAxis: { categories: holdings.map((h) => h.ticker), title: { text: null } },
+          yAxis: { min: 0, title: { text: "Weight (%)" } },
+          series: [{ name: "Weight", data: holdings.map((h) => Math.round(h.weight * 100) / 100) }],
+          credits: { enabled: false }
+        };
+
+        return {
+          risk_explantion: `<div class="text-center font-semibold">คุณได้ 13 คะแนน → ระดับ 1 (เสี่ยงต่ำ)</div>`,
+          summary,
+          holdings,
+          weights_hc,
+          series: {
+            aum_dates: dates,
+            aum_port,
+            aum_sp500,
+            ret_dates: dates,
+            ret_port,
+            ret_sp500,
+            indiv
+          },
+          indiv_dates
+        };
+      }
+
+async function getPortfolio() {
         const cap = +document.getElementById("capitalInput").value || 100000;
         const user = encodeURIComponent(
           document.getElementById("userIdInput").value || "guest"
@@ -1486,6 +1585,13 @@
         document.getElementById("result").classList.add("hidden");
         document.getElementById("portfolioResult").classList.add("hidden");
 
+        if (USE_MOCK_PORTFOLIO) {
+          await sleep(MOCK_DELAY_MS);
+          renderPortfolio(makeMockPortfolio(cap));
+          document.getElementById("loadingIndicator").classList.add("hidden");
+          return;
+        }
+
         try {
           const res = await fetch(url);
           if (!res.ok) throw new Error("server error");
@@ -1500,7 +1606,10 @@
 
       // Render results
 
-      const logoUrl = (t) => null;
+      const logoUrl = (t) =>
+        domainMap[t]
+          ? `https://logo.clearbit.com/${domainMap[t]}?size=64`
+          : null;
       const n = (v) =>
         v == null
           ? "—"
@@ -1613,10 +1722,8 @@
           tr.innerHTML = `
             <td class="py-3">
               <div class="flex items-center gap-3">
-                <div class="relative w-6 h-6">
-                  <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">${h.ticker?.[0]||'?'}</div>
-                  ${img ? `<img src="${img}" class="absolute inset-0 w-6 h-6 rounded-full object-contain" onerror="this.style.display='none'">` : ``}
-                </div>
+                ${img ? `<img src="${img}" class="w-6 h-6 rounded" onerror="this.style.display='none'">`
+                      : `<div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">${h.ticker?.[0]||'?'}</div>`}
                 <div>
                   <div class="font-semibold">${h.ticker}</div>
                   <div class="text-gray-500 text-xs">${h.company || ""}</div>
@@ -1633,6 +1740,5 @@
         });
       }
     </script>
-
   </body>
 </html>
