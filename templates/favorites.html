@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <title>รายการโปรดของฉัน - RoboAdvisor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn-uicons.flaticon.com/2.6.0/uicons-bold-rounded/css/uicons-bold-rounded.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      body {
+        font-family:
+          "Poppins",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #00d4ff 0%, #00bfa5 100%);
+        transition: all 0.3s ease;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 212, 255, 0.3);
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-gray-50 text-gray-900">
+    <!-- NAVBAR -->
+    <nav class="fixed w-full top-0 z-50 px-4 py-3" style="z-index: 9999">
+      <div class="container mx-auto flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <div
+            class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center"
+          >
+            <i class="fas fa-chart-line text-white"></i>
+          </div>
+          <span class="text-xl font-bold text-gray-800">RoboAdvisor</span>
+        </div>
+
+        <div class="hidden md:flex items-center space-x-8">
+          <a
+            href="/"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >หน้าหลัก</a
+          >
+          <a
+            href="/stock"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >หุ้น</a
+          >
+          <span
+            href="/favorites"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >รายการโปรด</span
+          >
+          <a
+            href="/"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >พอร์ตของฉัน</a
+          >
+          <a
+            href="/"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >คำนวณค่าเฉลี่ยหุ้น</a
+          >
+          <button
+            onclick="startQuestionnaire()"
+            class="btn-primary text-white px-6 py-2 rounded-full font-semibold"
+          >
+            เริ่มต้น
+          </button>
+        </div>
+
+        <!-- Mobile menu button -->
+        <button class="md:hidden text-gray-600">
+          <i class="fas fa-bars text-2xl"></i>
+        </button>
+      </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-4 pt-24 pb-16 flex flex-col items-center">
+      <section
+        class="w-full rounded-3xl bg-white/95 border border-gray-200 shadow-xl p-6 md:p-8"
+      >
+        <!-- Header เหมือนแอป -->
+        <div class="flex items-center justify-between mb-8">
+          <div>
+            <p class="text-[11px] uppercase tracking-[0.2em] text-sky-400 mb-1">
+              Watchlist
+            </p>
+            <h1 class="text-2xl md:text-3xl font-semibold">รายการโปรดของฉัน</h1>
+          </div>
+          <div class="flex items-center gap-4 text-slate-300 text-lg">
+            <button
+              type="button"
+              class="hover:text-white transition"
+              title="ค้นหา"
+              onclick="window.location.href='/stock'"
+            >
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            <button
+              type="button"
+              class="hover:text-white transition"
+              title="ตั้งค่า"
+            >
+              <i class="fa-solid fa-gear"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div
+          id="favEmpty"
+          class="flex flex-col items-center justify-center text-center py-14 px-4"
+        >
+          <div
+            class="w-28 h-28 md:w-32 md:h-32 rounded-3xl bg-slate-800 flex items-center justify-center mb-6"
+          >
+            <div
+              class="w-16 h-20 rounded-2xl bg-slate-700 relative overflow-hidden"
+            >
+              <div
+                class="absolute -top-2 left-3 w-6 h-6 rounded-full border-2 border-slate-500 bg-slate-800"
+              ></div>
+              <div
+                class="absolute bottom-0 left-0 right-0 h-6 bg-sky-500"
+              ></div>
+            </div>
+          </div>
+
+          <p class="text-lg font-semibold text-slate-100 mb-2">
+            ไม่มีสัญลักษณ์ในรายการโปรดนี้
+          </p>
+          <p class="text-sm text-slate-400 mb-8">
+            กด “★” ที่หน้าตลาด S&amp;P 500 เพื่อเพิ่มหุ้นที่คุณสนใจ
+          </p>
+
+          <button
+            type="button"
+            onclick="window.location.href='/stock'"
+            class="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-sky-500 text-slate-950 text-sm font-semibold hover:bg-sky-400 transition"
+          >
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>ค้นหาชื่อย่อหุ้น</span>
+          </button>
+        </div>
+
+        <!-- LIST STATE -->
+        <div id="favListWrapper" class="hidden">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-xs text-slate-400">
+              <span id="favCountLabel">0 รายการ</span>
+              <span class="mx-1">•</span>
+              <span>% เปลี่ยนแปลงจากวันก่อนหน้า</span>
+            </div>
+            <button
+              type="button"
+              class="text-xs text-sky-400 hover:text-sky-300"
+              onclick="window.location.href='/stock'"
+            >
+              แก้ไขรายการโปรด
+            </button>
+          </div>
+
+          <div id="favList" class="divide-y divide-slate-800"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      async function initFavoritesPage() {
+        const emptyEl = document.getElementById("favEmpty");
+        const wrapEl = document.getElementById("favListWrapper");
+        const listEl = document.getElementById("favList");
+        const countEl = document.getElementById("favCountLabel");
+
+        if (!emptyEl || !wrapEl || !listEl || !countEl) return;
+
+        let favs = [];
+        try {
+          favs = JSON.parse(localStorage.getItem("fav_sp500") || "[]");
+        } catch (e) {
+          favs = [];
+        }
+
+        // ไม่มีรายการโปรด -> แสดงหน้าว่างแบบรูป
+        if (!favs.length) {
+          emptyEl.classList.remove("hidden");
+          wrapEl.classList.add("hidden");
+          countEl.textContent = "0 รายการ";
+          return;
+        }
+
+        // มีรายการโปรด -> แสดงเป็นลิสต์
+        emptyEl.classList.add("hidden");
+        wrapEl.classList.remove("hidden");
+        countEl.textContent = favs.length + " รายการ";
+
+        const tickers = favs.slice(0, 20); // limit 20 ตัวก่อน
+        const results = await Promise.all(
+          tickers.map((t) =>
+            fetch(`/api/stock/${encodeURIComponent(t)}?timeframe=7d`)
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null)
+          )
+        );
+
+        listEl.innerHTML = "";
+
+        tickers.forEach((t, idx) => {
+          const d = results[idx] || {};
+          const name = d.name || t;
+          const last =
+            typeof d.last === "number"
+              ? d.last.toLocaleString(undefined, { maximumFractionDigits: 2 })
+              : "—";
+          const chg = typeof d.change_pct === "number" ? d.change_pct : null;
+          const sign = chg != null && chg >= 0 ? "+" : "";
+          const chgText = chg != null ? `${sign}${chg.toFixed(2)}%` : "—";
+          const chgClass =
+            chg == null
+              ? "text-slate-400"
+              : chg >= 0
+                ? "text-emerald-400"
+                : "text-rose-400";
+
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className =
+            "w-full flex items-center justify-between py-3 px-1 hover:bg-slate-800/60 rounded-xl transition";
+          row.onclick = () =>
+            (window.location.href = "/stock?ticker=" + encodeURIComponent(t));
+
+          row.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-semibold text-sky-400">
+                ${t[0] || "?"}
+              </div>
+              <div class="text-left">
+                <div class="text-sm font-semibold text-slate-50">${t}</div>
+                <div class="text-[11px] text-slate-400 truncate max-w-[180px] md:max-w-[260px]">
+                  ${name}
+                </div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-semibold text-slate-50">${last}</div>
+              <div class="text-[11px] ${chgClass}">${chgText}</div>
+            </div>
+          `;
+          listEl.appendChild(row);
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", initFavoritesPage);
+    </script>
+  </body>
+</html>
