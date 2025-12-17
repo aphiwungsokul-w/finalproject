@@ -28,8 +28,6 @@ from sklearn.preprocessing import StandardScaler
 
 from xgboost import XGBRegressor, XGBClassifier
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Input
 
 from config import LOOKBACK, TRAIN_SUBSET, TIMEFRAMES, FORECAST_HORIZON
 from indicators import sma, rsi, macd
@@ -187,6 +185,9 @@ def _get_prices(tic: str, period: str = "5y") -> pd.Series:
 
 def _train_models_reg(X: pd.DataFrame, y: pd.Series) -> Dict[str, object]:
     """เทรน XGB + LSTM (regression) พร้อม scaler สำหรับ LSTM"""
+    # Lazy-import TensorFlow/Keras to avoid slow startup on Render
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Input
 
     xgb = XGBRegressor(
         n_estimators=300,
@@ -219,6 +220,9 @@ def _train_models_reg(X: pd.DataFrame, y: pd.Series) -> Dict[str, object]:
 
 def _train_models_cls(X: pd.DataFrame, y: pd.Series) -> Dict[str, object]:
     """เทรน XGB + LSTM (classification: ทำนายขึ้น/ลง)"""
+    # Lazy-import TensorFlow/Keras to avoid slow startup on Render
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Input
 
     y_cls = (y.values > 0).astype(int)
 
