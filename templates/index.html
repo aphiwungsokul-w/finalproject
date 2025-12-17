@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Portfolio Recommendation</title>
+    <title>Portfolio Recommendation - Robo Advisor</title>
     <style>
       /* Glass morphism cards */
       .glass-card {
@@ -1606,10 +1606,16 @@ async function getPortfolio() {
 
       // Render results
 
-      const logoUrl = (t) =>
-        domainMap[t]
-          ? `https://logo.clearbit.com/${domainMap[t]}?size=64`
-          : null;
+      const logoUrl = (t) => {
+        // mock-safe: domainMap อาจไม่ได้ประกาศ (ทำให้ JS error แล้ว table ไม่ render)
+        try {
+          const dm = (typeof domainMap !== "undefined" && domainMap) ? domainMap : {};
+          const d = dm[t];
+          return d ? `https://logo.clearbit.com/${d}?size=64` : null;
+        } catch (e) {
+          return null;
+        }
+      };
       const n = (v) =>
         v == null
           ? "—"
