@@ -1500,10 +1500,7 @@
 
       // Render results
 
-      const logoUrl = (t) =>
-        domainMap[t]
-          ? `https://logo.clearbit.com/${domainMap[t]}?size=64`
-          : null;
+      const logoUrl = (t) => null;
       const n = (v) =>
         v == null
           ? "—"
@@ -1616,8 +1613,10 @@
           tr.innerHTML = `
             <td class="py-3">
               <div class="flex items-center gap-3">
-                ${img ? `<img src="${img}" class="w-6 h-6 rounded" onerror="this.style.display='none'">`
-                      : `<div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">${h.ticker?.[0]||'?'}</div>`}
+                <div class="relative w-6 h-6">
+                  <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs">${h.ticker?.[0]||'?'}</div>
+                  ${img ? `<img src="${img}" class="absolute inset-0 w-6 h-6 rounded-full object-contain" onerror="this.style.display='none'">` : ``}
+                </div>
                 <div>
                   <div class="font-semibold">${h.ticker}</div>
                   <div class="text-gray-500 text-xs">${h.company || ""}</div>
@@ -1634,5 +1633,6 @@
         });
       }
     </script>
+
   </body>
 </html>
