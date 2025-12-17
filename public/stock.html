@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <title>หุ้น S&P500</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Highcharts -->
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+
+    <!-- Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn-uicons.flaticon.com/2.6.0/uicons-bold-rounded/css/uicons-bold-rounded.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      body {
+        font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      .glass-card {
+        background: rgba(255, 255, 255, 0.96);
+        -webkit-backdrop-filter: blur(14px);
+        backdrop-filter: blur(14px);
+        border-radius: 1.5rem;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+      }
+
+      .btn-chip {
+        font-size: 11px;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        border-width: 1px;
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-gray-50 text-gray-900">
+    <!-- NAVBAR (โทนเดียวกับหน้า index) -->
+    <nav class="fixed w-full top-0 z-50 px-4 py-3" style="z-index: 9999">
+      <div class="container mx-auto flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <div
+            class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center"
+          >
+            <i class="fas fa-chart-line text-white"></i>
+          </div>
+          <span class="text-xl font-bold text-gray-800">RoboAdvisor</span>
+        </div>
+
+        <div class="hidden md:flex items-center space-x-8">
+          <a
+            href="/"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >หน้าหลัก</a
+          >
+          <span
+            href="/stock"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >หุ้น</span
+          >
+          <a
+            href="/favorites"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >รายการโปรด</a
+          >
+          <a
+            href="/"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >พอร์ตของฉัน</a
+          >
+          <a
+            href="/"
+            onclick="goBackToHome()"
+            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+            >คำนวณค่าเฉลี่ยหุ้น</a
+          >
+          <button
+            onclick="startQuestionnaire()"
+            class="btn-primary text-white px-6 py-2 rounded-full font-semibold"
+          >
+            เริ่มต้น
+          </button>
+        </div>
+
+        <!-- Mobile menu button -->
+        <button class="md:hidden text-gray-600">
+          <i class="fas fa-bars text-2xl"></i>
+        </button>
+      </div>
+    </nav>
+
+      <main class="pt-24 pb-16">
+    <!-- container กว้างเต็มหน้าจอ -->
+    <section class="w-full mx-auto px-2 sm:px-4 lg:px-8 space-y-6">
+      <!-- Header -->
+      <header class="space-y-1">
+        <p class="text-[11px] uppercase tracking-[0.2em] text-blue-500">
+          Market Overview
+        </p>
+        <h1 class="text-2xl md:text-3xl font-semibold text-gray-900">
+          ตลาดหุ้น S&amp;P 500
+        </h1>
+        <p class="text-xs md:text-sm text-gray-500">
+          ค้นหา ดูกราฟราคา และบันทึกรายการโปรดจากหุ้นในดัชนี S&amp;P 500
+        </p>
+      </header>
+
+      <!-- Main card (จะกว้างเต็มหน้าจอเพราะ container ไม่จำกัด max-width แล้ว) -->
+      <section class="glass-card p-4 md:p-6 w-full">
+        <div
+          class="flex flex-col gap-4 lg:grid lg:grid-cols-[260px,minmax(0,1fr)]"
+        >
+          <!-- ซ้าย : search + list -->
+          <aside class="flex flex-col gap-3">
+            <div
+              class="px-3 py-2 rounded-2xl bg-gray-50 border border-gray-200 flex items-center gap-2"
+            >
+              <i
+                class="fa-solid fa-magnifying-glass text-gray-400 text-xs"
+              ></i>
+              <input
+                id="searchInput"
+                type="text"
+                placeholder="ค้นหาชื่อหุ้นหรือสัญลักษณ์..."
+                class="w-full text-xs bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+              />
+            </div>
+
+            <div
+              id="stockList"
+              class="flex-1 min-h-[280px] max-h-[540px] overflow-y-auto space-y-1 text-xs pr-1"
+            ></div>
+          </aside>
+
+          <!-- ขวา : header หุ้น + timeframe + chart -->
+          <section class="flex flex-col gap-3">
+            <!-- header + timeframe -->
+            <div
+              class="rounded-2xl bg-white border border-gray-200 p-4 space-y-3"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <h2
+                      id="stockName"
+                      class="text-lg md:text-xl font-semibold truncate text-gray-900"
+                    >
+                      -
+                    </h2>
+                    <span
+                      id="stockTicker"
+                      class="px-2 py-0.5 rounded-full text-[10px] bg-gray-100 border border-gray-300 text-gray-700"
+                      >-</span
+                    >
+                    <button
+                      id="favButton"
+                      class="ml-1 text-gray-400 hover:text-yellow-400 transition"
+                    >
+                      <i class="fas fa-star text-xs"></i>
+                    </button>
+                  </div>
+                  <p
+                    id="stockExchange"
+                    class="text-[11px] text-gray-500 truncate"
+                  >
+                    -
+                  </p>
+                </div>
+                <div class="text-right">
+                  <div
+                    id="stockPrice"
+                    class="text-2xl md:text-3xl font-semibold text-gray-900"
+                  >
+                    -
+                  </div>
+                  <div
+                    id="stockChange"
+                    class="mt-1 inline-flex items-center gap-1 text-[11px] text-gray-500"
+                  >
+                    -
+                  </div>
+                </div>
+              </div>
+
+              <div
+                class="flex flex-wrap gap-2 text-[11px] bg-gray-50 border border-gray-200 rounded-2xl px-2 py-2"
+              >
+                <button
+                  class="tf-btn btn-chip border-gray-300 bg-white"
+                  data-tf="7d"
+                >
+                  7D
+                </button>
+                <button
+                  class="tf-btn btn-chip border-gray-300 bg-white"
+                  data-tf="1m"
+                >
+                  1M
+                </button>
+                <button
+                  class="tf-btn btn-chip border-gray-300 bg-white"
+                  data-tf="3m"
+                >
+                  3M
+                </button>
+                <button
+                  class="tf-btn btn-chip border-gray-300 bg-white"
+                  data-tf="6m"
+                >
+                  6M
+                </button>
+                <button
+                  class="tf-btn btn-chip border-gray-300 bg-white"
+                  data-tf="1y"
+                >
+                  1Y
+                </button>
+                <button
+                  class="tf-btn btn-chip border-gray-300 bg-white"
+                  data-tf="3y"
+                >
+                  3Y
+                </button>
+                <button
+                  class="tf-btn btn-chip border-gray-300 bg-white"
+                  data-tf="5y"
+                >
+                  5Y
+                </button>
+
+                <div class="ml-auto flex items-center gap-2 text-[11px]">
+                  <button
+                    id="btnTabAll"
+                    class="btn-chip border-blue-500 bg-blue-50 text-blue-600"
+                  >
+                    ทั้งหมด
+                  </button>
+                  <button
+                    id="btnTabFav"
+                    class="btn-chip border-gray-300 text-gray-600"
+                  >
+                    เฉพาะรายการโปรด
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart -->
+            <div
+              class="rounded-2xl bg-white border border-gray-200 p-3 md:p-4 h-[380px] md:h-[420px]"
+            >
+              <div id="stockChart" class="w-full h-full"></div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </section>
+  </main>
+  
+    <!-- JS ส่วนหุ้น (ใช้ logic เดิม แต่ตัด dropdown navbar ออก) -->
+    <script>
+      function startQuestionnaire() {
+
+        // Show questionnaire app
+        document.getElementById("questionnaireApp").classList.remove("hidden");
+        document
+          .getElementById("riskSurvey")
+          .scrollIntoView({ behavior: "smooth" });
+
+        initializeQuestionnaire();
+      }
+
+      const listEl = document.getElementById("stockList");
+      const searchInput = document.getElementById("searchInput");
+      const favButton = document.getElementById("favButton");
+      const btnTabAll = document.getElementById("btnTabAll");
+      const btnTabFav = document.getElementById("btnTabFav");
+
+      const nameEl = document.getElementById("stockName");
+      const tickerEl = document.getElementById("stockTicker");
+      const exchEl = document.getElementById("stockExchange");
+      const priceEl = document.getElementById("stockPrice");
+      const changeEl = document.getElementById("stockChange");
+
+      const tfButtons = Array.from(document.querySelectorAll(".tf-btn"));
+
+      let sp500Universe = [];
+      let currentTicker = "AAPL";
+      let currentTimeframe = "7d";
+      let currentTab = "{{ tab }}";
+      if (currentTab !== "favorites") currentTab = "all";
+      let favorites = [];
+
+      // อ่าน ticker จาก query string ถ้ามี
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const qsTicker = params.get("ticker");
+        if (qsTicker) {
+          currentTicker = qsTicker.toUpperCase();
+        }
+      } catch (e) {}
+
+      function loadFavorites() {
+        try {
+          favorites = JSON.parse(localStorage.getItem("fav_sp500") || "[]");
+        } catch (e) {
+          favorites = [];
+        }
+      }
+
+      function saveFavorites() {
+        localStorage.setItem("fav_sp500", JSON.stringify(favorites));
+      }
+
+      function isFavorite(t) {
+        return favorites.includes(t);
+      }
+
+      function toggleFavorite(t) {
+        if (isFavorite(t)) {
+          favorites = favorites.filter((x) => x !== t);
+        } else {
+          favorites.push(t);
+        }
+        saveFavorites();
+        updateFavoriteIcon();
+        renderStockList();
+      }
+
+      function updateFavoriteIcon() {
+        if (!favButton) return;
+        if (isFavorite(currentTicker)) {
+          favButton.classList.add("text-yellow-400");
+          favButton.classList.remove("text-gray-400");
+        } else {
+          favButton.classList.remove("text-yellow-400");
+          favButton.classList.add("text-gray-400");
+        }
+      }
+
+      function renderStockList() {
+        const q = searchInput.value.trim().toLowerCase();
+        listEl.innerHTML = "";
+
+        let data = sp500Universe;
+        if (currentTab === "favorites") {
+          data = data.filter((x) => isFavorite(x.ticker));
+        }
+
+        const filtered = data.filter((x) => {
+          const t = x.ticker.toLowerCase();
+          const n = (x.name || "").toLowerCase();
+          return !q || t.includes(q) || n.includes(q);
+        });
+
+        if (!filtered.length) {
+          listEl.innerHTML =
+            '<div class="text-[11px] text-gray-400 px-2 py-1">ไม่พบหุ้น</div>';
+          return;
+        }
+
+        filtered.forEach((s) => {
+          const row = document.createElement("div");
+          row.className =
+            "flex items-center justify-between px-3 py-2 rounded-xl hover:bg-gray-50 cursor-pointer";
+          row.onclick = () => {
+            currentTicker = s.ticker;
+            selectTicker(s.ticker);
+          };
+
+          const left = document.createElement("div");
+          left.className = "flex flex-col";
+          const sym = document.createElement("span");
+          sym.className = "font-semibold text-xs text-gray-900";
+          sym.textContent = s.ticker;
+          const nm = document.createElement("span");
+          nm.className =
+            "text-[11px] text-gray-500 truncate max-w-[160px] md:max-w-[200px]";
+          nm.textContent = s.name;
+          left.appendChild(sym);
+          left.appendChild(nm);
+
+          const right = document.createElement("div");
+          right.className = "flex items-center gap-2";
+          const sector = document.createElement("span");
+          sector.className =
+            "hidden xl:inline-block text-[10px] px-2 py-0.5 rounded-full border border-gray-200 text-gray-600 bg-gray-50";
+          sector.textContent = s.sector || "";
+          const star = document.createElement("button");
+          star.className =
+            "text-[11px] " +
+            (isFavorite(s.ticker) ? "text-yellow-400" : "text-gray-300");
+          star.innerHTML = "★";
+          star.onclick = (ev) => {
+            ev.stopPropagation();
+            toggleFavorite(s.ticker);
+          };
+          right.appendChild(sector);
+          right.appendChild(star);
+
+          row.appendChild(left);
+          row.appendChild(right);
+          listEl.appendChild(row);
+        });
+      }
+
+      function setTab(tab) {
+        currentTab = tab;
+        if (tab === "favorites") {
+          btnTabFav.classList.add("bg-blue-50", "border-blue-500", "text-blue-600");
+          btnTabAll.classList.remove("bg-blue-50", "border-blue-500", "text-blue-600");
+          btnTabAll.classList.add("border-gray-300");
+        } else {
+          btnTabAll.classList.add("bg-blue-50", "border-blue-500", "text-blue-600");
+          btnTabFav.classList.remove("bg-blue-50", "border-blue-500", "text-blue-600");
+          btnTabFav.classList.add("border-gray-300");
+        }
+        renderStockList();
+      }
+
+      function setTimeframe(tf) {
+        currentTimeframe = tf;
+        tfButtons.forEach((b) => {
+          if (b.dataset.tf === tf) {
+            b.classList.add("bg-blue-50", "border-blue-500", "text-blue-600");
+          } else {
+            b.classList.remove("bg-blue-50", "border-blue-500", "text-blue-600");
+            b.classList.add("bg-white", "border-gray-300", "text-gray-700");
+          }
+        });
+        selectTicker(currentTicker);
+      }
+
+      async function fetchUniverse() {
+        try {
+          const res = await fetch("/api/sp500");
+          if (!res.ok) return;
+          sp500Universe = await res.json();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      function renderStockHeader(d) {
+        nameEl.textContent = d.name || d.ticker || "-";
+        tickerEl.textContent = d.ticker || "-";
+        const parts = [];
+        if (d.exchange) parts.push(d.exchange);
+        if (d.currency) parts.push(d.currency);
+        if (d.sector) parts.push(d.sector);
+        exchEl.textContent = parts.join(" · ") || "-";
+
+        if (d.last != null) {
+          priceEl.textContent = d.last.toLocaleString(undefined, {
+            maximumFractionDigits: 2,
+          });
+        } else {
+          priceEl.textContent = "-";
+        }
+
+        if (d.change != null && d.change_pct != null) {
+          const sign = d.change >= 0 ? "+" : "";
+          changeEl.textContent = `${sign}${d.change.toFixed(
+            2
+          )} (${sign}${d.change_pct.toFixed(2)}%)`;
+          changeEl.className =
+            "mt-1 inline-flex items-center gap-1 text-[11px] " +
+            (d.change >= 0 ? "text-emerald-500" : "text-rose-500");
+        } else {
+          changeEl.textContent = "-";
+          changeEl.className =
+            "mt-1 inline-flex items-center gap-1 text-[11px] text-gray-500";
+        }
+      }
+
+      function renderChart(d) {
+        Highcharts.chart("stockChart", {
+          chart: { backgroundColor: "transparent" },
+          title: { text: "" },
+          xAxis: {
+            type: "datetime",
+            lineColor: "#e5e7eb",
+            tickColor: "#e5e7eb",
+          },
+          yAxis: {
+            title: { text: d.currency || "Price" },
+            gridLineColor: "#e5e7eb",
+          },
+          legend: { enabled: false },
+          credits: { enabled: false },
+          tooltip: {
+            shared: true,
+            valueDecimals: 2,
+          },
+          series: [
+            {
+              type: "area",
+              name: d.ticker,
+              data: d.chart || [],
+              fillOpacity: 0.25,
+            },
+          ],
+        });
+      }
+
+      async function selectTicker(t) {
+        updateFavoriteIcon();
+        try {
+          const res = await fetch(
+            `/api/stock/${encodeURIComponent(
+              t
+            )}?timeframe=${encodeURIComponent(currentTimeframe)}`
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          renderStockHeader(data);
+          renderChart(data);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function init() {
+        loadFavorites();
+
+        btnTabAll.onclick = () => setTab("all");
+        btnTabFav.onclick = () => setTab("favorites");
+        favButton.onclick = () => toggleFavorite(currentTicker);
+        searchInput.addEventListener("input", renderStockList);
+
+        tfButtons.forEach((b) => {
+          b.onclick = () => setTimeframe(b.dataset.tf);
+        });
+
+        setTab(currentTab); // all หรือ favorites จาก query
+        setTimeframe(currentTimeframe); // ไฮไลต์ 7D
+
+        await fetchUniverse();
+        renderStockList();
+
+        if (sp500Universe.length) {
+          if (!sp500Universe.find((x) => x.ticker === currentTicker)) {
+            currentTicker = sp500Universe[0].ticker;
+          }
+          await selectTicker(currentTicker);
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>
