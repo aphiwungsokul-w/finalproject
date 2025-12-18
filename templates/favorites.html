@@ -2,7 +2,7 @@
 <html lang="th">
   <head>
     <meta charset="UTF-8" />
-    <title>รายการโปรดของฉัน - RoboAdvisor</title>
+    <title>รายการโปรดของฉัน</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <!-- Tailwind -->
@@ -57,38 +57,27 @@
           >
             <i class="fas fa-chart-line text-white"></i>
           </div>
-          <span class="text-xl font-bold text-gray-800">RoboAdvisor</span>
+          <span class="text-xl font-bold text-gray-800">PortRec</span>
         </div>
 
         <div class="hidden md:flex items-center space-x-8">
-          <a
-            href="/"
-            onclick="goBackToHome()"
-            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+          <a href="/" class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
             >หน้าหลัก</a
           >
           <a
             href="/stock"
-            onclick="goBackToHome()"
             class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
             >หุ้น</a
           >
           <span
             href="/favorites"
-            onclick="goBackToHome()"
             class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
             >รายการโปรด</span
           >
-          <a
-            href="/"
-            onclick="goBackToHome()"
-            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+          <a href="/" class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
             >พอร์ตของฉัน</a
           >
-          <a
-            href="/"
-            onclick="goBackToHome()"
-            class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
+          <a href="/" class="text-gray-600 hover:text-blue-600 transition cursor-pointer"
             >คำนวณค่าเฉลี่ยหุ้น</a
           >
           <button
@@ -157,7 +146,7 @@
             </div>
           </div>
 
-          <p class="text-lg font-semibold text-slate-100 mb-2">
+          <p class="text-lg font-semibold text-black mb-2">
             ไม่มีสัญลักษณ์ในรายการโปรดนี้
           </p>
           <p class="text-sm text-slate-400 mb-8">
@@ -283,5 +272,15 @@
 
       document.addEventListener("DOMContentLoaded", initFavoritesPage);
     </script>
+  
+    <script>
+      function startQuestionnaire() {
+        window.location.href = "/?start=1";
+      }
+      function goBackToHome() {
+        window.location.href = "/";
+      }
+    </script>
+    
   </body>
 </html>
