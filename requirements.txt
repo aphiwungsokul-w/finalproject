@@ -18,7 +18,7 @@ cvxpy
 osqp
 scs
 ecos
-
+xml.etree.ElementTree
 scikit-learn
 joblib
 xgboost
