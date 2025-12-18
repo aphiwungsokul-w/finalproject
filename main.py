@@ -272,6 +272,197 @@ def _sample_ef_points(
         rets.append(float(np.dot(w, mu.values)))
     return pd.DataFrame({"risk": rs, "ret": rets})
 
+# ───────────────────────── News / Hot feed ────────────────────────────────
+_NEWS_TTL = int(os.getenv("NEWS_TTL", "300"))  # seconds
+_NEWS_CACHE: Dict[str, Tuple[float, List[Dict[str, str]]]] = {}
+
+_BLOOMBERG_FEEDS = [
+    "https://feeds.bloomberg.com/markets/news.rss",
+    "https://feeds.bloomberg.com/technology/news.rss",
+]
+
+_YAHOO_FEEDS = [
+    "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC&region=US&lang=en-US",
+    "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EIXIC&region=US&lang=en-US",
+]
+
+
+def _clean_text(s: str | None) -> str:
+    if not s:
+        return ""
+    s = unescape(str(s))
+    s = re.sub(r"<[^>]+>", " ", s)  # strip html tags
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _fetch_feed(url: str) -> str | None:
+    try:
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+        if r.status_code >= 400:
+            return None
+        return r.text
+    except Exception:
+        return None
+
+
+def _parse_feed(xml_text: str, source: str) -> List[Dict[str, str]]:
+    items_out: List[Dict[str, str]] = []
+    try:
+        root = ET.fromstring(xml_text)
+    except Exception:
+        return items_out
+
+    ns_atom = "{http://www.w3.org/2005/Atom}"
+    tag_lower = (root.tag or "").lower()
+
+    # RSS 2.0
+    if tag_lower.endswith("rss") or tag_lower.endswith("rdf"):
+        for it in root.findall(".//item"):
+            title = _clean_text(it.findtext("title"))
+            link = _clean_text(it.findtext("link"))
+            desc = _clean_text(it.findtext("description") or it.findtext("summary"))
+            pub_raw = _clean_text(it.findtext("pubDate") or it.findtext("published") or it.findtext("date"))
+
+            ts = 0
+            pub_iso = ""
+            if pub_raw:
+                try:
+                    dt = parsedate_to_datetime(pub_raw)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    ts = int(dt.timestamp())
+                    pub_iso = dt.astimezone(timezone.utc).isoformat()
+                except Exception:
+                    ts = 0
+                    pub_iso = ""
+
+            if not title or not link:
+                continue
+
+            if len(desc) > 220:
+                desc = desc[:217].rstrip() + "..."
+
+            items_out.append(
+                {
+                    "title": title,
+                    "link": link,
+                    "summary": desc,
+                    "source": source,
+                    "published": pub_iso,
+                    "published_ts": ts,
+                }
+            )
+        return items_out
+
+    # Atom
+    for ent in root.findall(f".//{ns_atom}entry"):
+        title = _clean_text(ent.findtext(f"{ns_atom}title"))
+        link = ""
+        for lnk in ent.findall(f"{ns_atom}link"):
+            href = lnk.attrib.get("href") if lnk is not None else None
+            rel = (lnk.attrib.get("rel") or "") if lnk is not None else ""
+            if href and (rel in ("alternate", "") or not link):
+                link = href
+
+        desc = _clean_text(ent.findtext(f"{ns_atom}summary") or ent.findtext(f"{ns_atom}content"))
+        pub_raw = _clean_text(ent.findtext(f"{ns_atom}updated") or ent.findtext(f"{ns_atom}published"))
+
+        ts = 0
+        pub_iso = ""
+        if pub_raw:
+            try:
+                dt = datetime.fromisoformat(pub_raw.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                ts = int(dt.timestamp())
+                pub_iso = dt.astimezone(timezone.utc).isoformat()
+            except Exception:
+                ts = 0
+                pub_iso = ""
+
+        if not title or not link:
+            continue
+
+        if len(desc) > 220:
+            desc = desc[:217].rstrip() + "..."
+
+        items_out.append(
+            {
+                "title": title,
+                "link": link,
+                "summary": desc,
+                "source": source,
+                "published": pub_iso,
+                "published_ts": ts,
+            }
+        )
+
+    return items_out
+
+
+def _get_hot_news(source: str, limit: int = 10) -> List[Dict[str, str]]:
+    src = (source or "all").lower().strip()
+    limit = max(1, min(int(limit or 10), 30))
+
+    cache_key = f"{src}:{limit}"
+    now = time.time()
+    cached = _NEWS_CACHE.get(cache_key)
+    if cached and (now - cached[0]) < _NEWS_TTL:
+        return cached[1]
+
+    feeds: List[Tuple[str, str]] = []
+    if src in ("all", "bloomberg"):
+        feeds += [("Bloomberg", u) for u in _BLOOMBERG_FEEDS]
+    if src in ("all", "yahoo"):
+        feeds += [("Yahoo", u) for u in _YAHOO_FEEDS]
+
+    items: List[Dict[str, str]] = []
+    for label, url in feeds:
+        txt = _fetch_feed(url)
+        if not txt:
+            continue
+        items.extend(_parse_feed(txt, label))
+
+    # sort + de-dup by link
+    items.sort(key=lambda x: int(x.get("published_ts") or 0), reverse=True)
+    seen = set()
+    out: List[Dict[str, str]] = []
+    for it in items:
+        lk = it.get("link") or ""
+        if not lk or lk in seen:
+            continue
+        seen.add(lk)
+        out.append(it)
+        if len(out) >= limit:
+            break
+
+    # fallback (mock) if feeds are blocked / unavailable
+    if not out:
+        ts = int(time.time())
+        out = [
+            {
+                "title": "(ตัวอย่าง) ข่าวตลาดวันนี้ — Bloomberg",
+                "link": "#",
+                "summary": "ไม่สามารถดึง RSS ได้ในขณะนี้ (อาจถูกบล็อก/จำกัดเครือข่าย) — แสดงตัวอย่างแทน",
+                "source": "Bloomberg",
+                "published": "",
+                "published_ts": ts,
+            },
+            {
+                "title": "(ตัวอย่าง) สรุปความเคลื่อนไหวหุ้นสหรัฐ — Yahoo",
+                "link": "#",
+                "summary": "ถ้ารันบนเครื่องที่ออกอินเทอร์เน็ตได้ Endpoint นี้จะดึงข่าวจริงขึ้นมา",
+                "source": "Yahoo",
+                "published": "",
+                "published_ts": ts - 300,
+            },
+        ][:limit]
+
+    _NEWS_CACHE[cache_key] = (now, out)
+    return out
+
+
 
 # ───────────────────────── Core route ─────────────────────────────────────
 
@@ -525,6 +716,20 @@ def stock_page(request: Request, view: str = Query("all")):
 def api_sp500_universe():
     data = load_sp500_constituents()
     return JSONResponse(data)
+    
+@app.get("/api/news/hot")
+def api_news_hot(
+    source: str = Query("all"),
+    limit: int = Query(10, ge=1, le=30),
+):
+    items = _get_hot_news(source, limit)
+    return JSONResponse(
+        {
+            "items": items,
+            "updated_ts": int(time.time()),
+        }
+    )
+
 
 
 @app.get("/api/stock/{ticker}")
