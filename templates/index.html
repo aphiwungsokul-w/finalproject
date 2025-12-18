@@ -1745,6 +1745,178 @@ async function getPortfolio() {
           tbody.appendChild(tr);
         });
       }
+      (function () {
+        const ENDPOINT = "/api/news/hot";
+        const listEl = document.getElementById("hotNewsList");
+        const loadingEl = document.getElementById("newsLoading");
+        const errEl = document.getElementById("newsError");
+        const updatedEl = document.getElementById("newsUpdatedAt");
+        const refreshBtn = document.getElementById("newsRefreshBtn");
+        const filterBtns = Array.from(document.querySelectorAll(".news-filter"));
+
+        if (!listEl) return;
+
+        function setLoading(on) {
+          if (!loadingEl) return;
+          loadingEl.classList.toggle("hidden", !on);
+        }
+
+        function setError(msg) {
+          if (!errEl) return;
+          if (!msg) {
+            errEl.classList.add("hidden");
+            errEl.textContent = "";
+            return;
+          }
+          errEl.classList.remove("hidden");
+          errEl.textContent = msg;
+        }
+
+        function badgeClass(src) {
+          const s = (src || "").toLowerCase();
+          if (s.includes("bloomberg")) return "bg-orange-50 text-orange-700 border border-orange-100";
+          if (s.includes("yahoo")) return "bg-purple-50 text-purple-700 border border-purple-100";
+          return "bg-blue-950/50 text-blue-200 border border-blue-900/60";
+        }
+
+        function timeAgoFromTs(tsSec) {
+          const ts = Number(tsSec || 0) * 1000;
+          if (!ts) return "";
+          const diff = Date.now() - ts;
+          const s = Math.floor(diff / 1000);
+          const m = Math.floor(s / 60);
+          const h = Math.floor(m / 60);
+          const d = Math.floor(h / 24);
+          if (d > 0) return `${d} วัน`;
+          if (h > 0) return `${h} ชม.`;
+          if (m > 0) return `${m} นาที`;
+          return "เมื่อสักครู่";
+        }
+
+        function setActiveSource(source) {
+          filterBtns.forEach((btn) => {
+            const isActive = (btn.dataset.source || "all") === source;
+            btn.classList.toggle("bg-blue-600", isActive);
+            btn.classList.toggle("text-white", isActive);
+            btn.classList.toggle("shadow-sm", isActive);
+
+            btn.classList.toggle("bg-white", !isActive);
+            btn.classList.toggle("text-gray-700", !isActive);
+            btn.classList.toggle("border", !isActive);
+            btn.classList.toggle("border-gray-200", !isActive);
+          });
+        }
+
+        function render(items) {
+          listEl.innerHTML = "";
+
+          if (!items || items.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "px-4 py-6 rounded-2xl bg-gray-800 border border-gray-700 text-gray-300";
+            empty.textContent = "ยังไม่พบข่าวในตอนนี้";
+            listEl.appendChild(empty);
+            return;
+          }
+
+          items.forEach((it) => {
+            const a = document.createElement("a");
+            a.href = it.link || "#";
+            a.target = "_blank";
+            a.rel = "noopener";
+            a.className =
+              "group block rounded-2xl border border-gray-700 bg-gray-800 p-5 shadow-sm hover:shadow-lg hover:border-gray-600 transition";
+
+            const top = document.createElement("div");
+            top.className = "flex items-start justify-between gap-4";
+
+            const left = document.createElement("div");
+            left.className = "flex-1 min-w-0";
+
+            const meta = document.createElement("div");
+            meta.className = "flex items-center gap-2 mb-2";
+
+            const badge = document.createElement("span");
+            badge.className = `text-xs font-semibold px-2 py-1 rounded-full ${badgeClass(it.source)}`;
+            badge.textContent = it.source || "-";
+
+            const time = document.createElement("span");
+            time.className = "text-xs text-gray-400";
+            time.textContent = timeAgoFromTs(it.published_ts);
+
+            meta.appendChild(badge);
+            meta.appendChild(time);
+
+            const title = document.createElement("h3");
+            title.className = "text-lg font-semibold text-gray-100 group-hover:text-cyan-300 transition clamp-2";
+            title.textContent = it.title || "-";
+
+            left.appendChild(meta);
+            left.appendChild(title);
+
+            if (it.summary) {
+              const summary = document.createElement("p");
+              summary.className = "mt-2 text-sm text-gray-300 clamp-2";
+              summary.textContent = it.summary || "";
+              left.appendChild(summary);
+            }
+
+            const right = document.createElement("div");
+            right.className =
+              "hidden sm:flex w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 items-center justify-center flex-shrink-0";
+            right.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square text-white"></i>';
+
+            top.appendChild(left);
+            top.appendChild(right);
+            a.appendChild(top);
+
+            listEl.appendChild(a);
+          });
+        }
+
+        async function load(source) {
+          setLoading(true);
+          setError("");
+
+          try {
+            const res = await fetch(
+              `${ENDPOINT}?source=${encodeURIComponent(source || "all")}&limit=5`,
+              { headers: { Accept: "application/json" }, cache: "no-store" }
+            );
+            if (!res.ok) throw new Error("Fetch failed");
+            const data = await res.json();
+            render(data.items || []);
+
+            if (updatedEl) {
+              const ts = Number(data.updated_ts || 0) * 1000;
+              const dt = ts ? new Date(ts) : new Date();
+              updatedEl.textContent = `อัปเดตล่าสุด: ${dt.toLocaleString()}`;
+            }
+          } catch (e) {
+            render([]);
+            setError("ดึงข่าวไม่สำเร็จ (แสดงผลว่าง) — ลองกดรีเฟรชอีกครั้ง");
+          } finally {
+            setLoading(false);
+          }
+        }
+
+        function init() {
+          let currentSource = "all";
+          setActiveSource(currentSource);
+          load(currentSource);
+
+          filterBtns.forEach((btn) => {
+            btn.addEventListener("click", () => {
+              currentSource = btn.dataset.source || "all";
+              setActiveSource(currentSource);
+              load(currentSource);
+            });
+          });
+
+          if (refreshBtn) refreshBtn.addEventListener("click", () => load(currentSource));
+        }
+
+        document.addEventListener("DOMContentLoaded", init);
+      })();
     </script>
   </body>
 </html>
